@@ -1,0 +1,183 @@
+/* pages/terminal/terminal.wxss */
+.terminalPage {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.navigationBar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 10vh;
+  width: 100vw;
+  color: dodgerblue;
+}
+
+.navigationOpt {
+  flex: 1;
+  text-align: center;
+  justify-content: center;
+  font-weight: bolder;
+}
+
+.scopeButton {
+  width: 12vw;
+  padding: 0%;
+}
+
+.msgInterface {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.msgRecBox {
+  display: flex;
+  flex-direction: column;
+  height: 80vh;
+  justify-items: flex-start;
+}
+
+.msgRecLine {
+  word-break: break-all;
+}
+
+.scopeInterface {
+  display: flex;
+  flex-direction: column;
+  height: 80vh;
+  width: 100vw;
+  justify-items: center;
+  align-items: center;
+}
+
+.scopeBox {
+  background-color: black;
+  color: white;
+  height: 78vh;
+  width: 95vw;
+  border: 1rpx solid darkgrey;
+  border-radius: 5vw;
+}
+
+.msgSendBar {
+  display: flex;
+  flex-direction: row;
+  flex-basis: 100rpx;
+  width: 100vw;
+  align-items: center;
+  border-top: 1rpx solid darkgrey;
+  border-bottom: 1rpx solid darkgrey;
+  background-color: whitesmoke;
+  justify-content: space-between;
+}
+
+.moreButton {
+  margin: 0% 20rpx;
+  border: 1rpx solid darkgrey;
+  max-height: 75rpx;
+  border-radius: 2vw;
+  font-weight: bold;
+  font-size: xx-small;
+  padding: 0%;
+}
+
+.msgInputBox {
+  background-color: white;
+  padding: 10rpx;
+  border: 1rpx solid darkgrey;
+  border-radius: 2vw;
+  flex-grow: 1;
+}
+
+.scopeSettingView {
+  flex-grow: 1;
+  max-height: 75rpx;
+  font-size: xx-small;
+  text-align: center;
+  font-weight: bold;
+  white-space: nowrap;
+  margin: 0% 30rpx;
+  color: grey;
+}
+
+.msgSendButton {
+  margin: 0% 20rpx;
+  max-height: 75rpx;
+  border-radius: 2vw;
+}
+
+.morePage {
+  height: 20vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.moreModeOptBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.moreModeTipText {
+  font-size: small;
+  color: darkgrey;
+  font-weight: bold;
+}
+
+.moreModeGroupBox {
+  display: flex;
+  flex-direction: column;
+  border-radius: 2vw;
+  border: 1rpx solid darkgrey;
+  margin: 10rpx;
+  align-items: center;
+  justify-content: center;
+  height: 12vh;
+}
+
+.moreModeDataTypeGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.moreModeViewFormat {
+  padding: 8rpx;
+}
+
+.moreModeDataFormatGroup {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.moreModeDataFormatOpt {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.moreModeDataFormatInput {
+  width: 25vw;
+  margin: 8rpx;
+  border-bottom: 1rpx solid darkgrey;
+}
+
+.moreModeCleanImage {
+  align-self: center;
+  width: 20vw;
+  padding: 8rpx;
+}
+
+/* .moreModeBluetoothImage {
+  align-self: center;
+  width: 20vw;
+} */

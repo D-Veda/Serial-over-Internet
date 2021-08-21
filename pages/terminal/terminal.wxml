@@ -1,0 +1,79 @@
+<!--pages/terminal/terminal.wxml-->
+<view class="terminalPage">
+  <view class="navigationBar">
+    <view bindtap="aliyunLinkSwitch" class="navigationOpt" style="color: {{(aliyun.linkState) ? 'green' : 'red'}};">阿里云
+    </view>
+    <view class="navigationOpt">
+      <button bindtap="scopeSwitch" disabled="{{!scope.buttonEnable}}" size="mini" type="{{scope.buttonType}}"
+        class="scopeButton">波形图</button>
+    </view>
+  </view>
+  <view class="msgInterface">
+    <scroll-view wx:if="{{scope.buttonType != 'default'}}" scroll-into-view="{{msg.nowSeq}}" scroll-y="true"
+      enable-flex="true" class="msgRecBox">
+      <view wx:key="seq" wx:for="{{msg.log}}" id="{{item.seq}}" class="msgRecLine"> [{{item.time}}]:{{item.text}}
+      </view>
+    </scroll-view>
+    <view wx:else class="scopeInterface">
+      <canvas type="2d" id="scope" class="scopeBox"></canvas>
+    </view>
+    <view class="msgSendBar">
+      <button bindtap="morePageSwitch" type="default" size="mini" class="moreButton">...</button>
+      <input wx:if="{{!scope.ready}}" bindinput="msgInput" bindconfirm="msgSend" disabled="{{morePage.frameEnable}}"
+        value="{{msg.sendBuffer}}" cursor-spacing="28rpx" type="text" confirm-type="send" class="msgInputBox"></input>
+      <button wx:if="{{!scope.ready}}" bindtap="msgSend" disabled="{{morePage.frameEnable}}" type="primary" size="mini"
+        class="msgSendButton">发送</button>
+      <picker wx:if="{{scope.ready}}" mode="multiSelector" bindchange="scopeSettingChangePick"
+        range="{{scope.settingType}}">
+        <view class="scopeSettingView">时间: {{scope.settingType[0][scope.settingIndex[0]]}}, 幅值:
+          {{scope.settingType[1][scope.settingIndex[1]]}}</view>
+      </picker>
+    </view>
+  </view>
+</view>
+
+<page-container bindenter="invalid" bindafterleave="morePageSwitch" z-index="300" show="{{morePage.popup}}"
+  duration="300" position="bottom" close-on-slideDown="{{true}}"
+  overlay-style="background-color: rgba(255, 255, 255, 0.5);">
+  <view class="morePage">
+    <view class="moreModeOptBox">
+      <text class="moreModeTipText">数据类型</text>
+      <view class="moreModeGroupBox">
+        <radio-group bindchange="morePageDataTypeChange" class="moreModeDataTypeGroup">
+          <radio checked="{{(morePage.typeMode == 'text') ? true : false}}" disabled="{{scope.ready}}" value="text"
+            class="moreModeViewFormat">文本
+          </radio>
+          <radio checked="{{(morePage.typeMode == 'frame') ? true : false}}" disabled="{{scope.ready}}" value="frame"
+            class="moreModeViewFormat">
+            数据帧
+          </radio>
+        </radio-group>
+      </view>
+    </view>
+    <view class="moreModeOptBox">
+      <text class="moreModeTipText">数据帧</text>
+      <view class="moreModeGroupBox">
+        <view class="moreModeDataFormatOpt">
+          <text class="moreModeViewFormat">帧头</text>
+          <input bindinput="morePageDataFormatHeadInput" disabled="{{!morePage.frameEnable}}"
+            value="{{morePage.frameHead}}" type="text" class="moreModeDataFormatInput"
+            style="text-align: center; color: red;"></input>
+        </view>
+        <radio-group bindchange="morePageDataFormatAlignChange" class="moreModeDataFormatGroup">
+          <radio checked="{{(morePage.frameAlign == 'big') ? true : false}}" disabled="{{!morePage.frameEnable}}"
+            value="big" class="moreModeViewFormat">大端
+          </radio>
+          <radio checked="{{(morePage.frameAlign == 'little') ? true : false}}" disabled="{{!morePage.frameEnable}}"
+            value="little" class="moreModeViewFormat">小端</radio>
+        </radio-group>
+      </view>
+    </view>
+    <view class="moreModeOptBox">
+      <text class="moreModeTipText">其他功能</text>
+      <view class="moreModeGroupBox">
+        <image bindtap="morePageCleanMsgLog" src="../../images/clean.png" mode="aspectFit" class="moreModeCleanImage">
+        </image>
+      </view>
+    </view>
+  </view>
+</page-container>
