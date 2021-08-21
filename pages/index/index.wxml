@@ -5,7 +5,11 @@
       <view class="userinfo-avatar" bindtap="bindViewTap">
         <open-data type="userAvatarUrl"></open-data>
       </view>
-      <open-data type="userNickName"></open-data>
+      <!-- <text>你好</text> -->
+      <view>
+        <text>你好! </text>
+        [<open-data type="userNickName"></open-data>]
+      </view>
     </block>
     <block wx:elif="{{!hasUserInfo}}">
       <button wx:if="{{canIUseGetUserProfile}}" bindtap="getUserProfile"> 获取头像昵称 </button>
@@ -17,12 +21,6 @@
       <text class="userinfo-nickname">{{userInfo.nickName}}</text>
     </block>
   </view>
-  <text>
-    version 2B
-    ==========
-    - 完善部分功能实现
-    - 定制功能裁剪
-  </text>
   <view>
     <button type="primary" bindtap="linkStart">开始连接</button>
   </view>

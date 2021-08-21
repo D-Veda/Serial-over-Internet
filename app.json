@@ -1,7 +1,8 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/terminal/terminal"
+    "pages/terminal/terminal",
+    "pages/about/about"
   ],
   "window": {
     "backgroundTextStyle": "light",

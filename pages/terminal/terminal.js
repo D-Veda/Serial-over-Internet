@@ -100,7 +100,7 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow: function () {
-
+    wx.hideHomeButton();
   },
 
   /**
@@ -271,8 +271,10 @@ Page({
    */
   aliyunLinkSwitch() {
     let aliyun = this.data.aliyun;
-    if (!aliyun.linkState)
+    if (!aliyun.linkState) {
       this.aliyunConnect();
+      this.onReady();
+    }
     else
       this.aliyunDisconnect();
   },
@@ -431,6 +433,7 @@ Page({
       scope.canvas.context = ctx;
       this.scopeDrawBaseMap();
       this.scopeSettingChangePick();
+      this.scopeDrawWave();
     })
   },
 
@@ -524,13 +527,13 @@ Page({
    * 波形图绘制数据帧波形
    */
   scopeDrawWave() {
+    this.scopeDrawBaseMap();
     let scope = this.data.scope;
     let axis = scope.canvas.axis;
     let axisBase = (axis[1][1] + axis[1][0]) / 2;
     let tmpAxisAmp, lastAxisAmp;
     let tmpOffset, lastOffset;
     let k = 0;
-    this.scopeDrawBaseMap();
     for (let i = 0, tmpIndex = 0; i < scope.canvas.div.blockX; i++) {
       lastOffset = scope.map[i];
       for (let j = 0; j < scope.settingData[0][scope.settingIndex[0]]; j++, tmpIndex++) {

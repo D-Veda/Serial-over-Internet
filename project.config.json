@@ -4,7 +4,7 @@
     "ignore": []
   },
   "setting": {
-    "urlCheck": false,
+    "urlCheck": true,
     "es6": true,
     "enhance": true,
     "postcss": true,
@@ -41,7 +41,7 @@
   "compileType": "miniprogram",
   "libVersion": "2.19.2",
   "appid": "wx0372e8d9ec8bee39",
-  "projectname": "通信助手v2",
+  "projectname": "通信助手",
   "debugOptions": {
     "hidedInDevtools": []
   },
