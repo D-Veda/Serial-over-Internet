@@ -21,8 +21,9 @@
       <button bindtap="morePageSwitch" type="default" size="mini" class="moreButton">...</button>
       <input wx:if="{{!scope.ready}}" bindinput="msgInput" bindconfirm="msgSend" disabled="{{morePage.frameEnable}}"
         value="{{msg.sendBuffer}}" cursor-spacing="28rpx" type="text" confirm-type="send" class="msgInputBox"></input>
-      <button wx:if="{{!scope.ready}}" bindtap="msgSend" disabled="{{morePage.frameEnable}}" type="primary" size="mini"
-        class="msgSendButton">发送</button>
+      <image wx:if="{{!scope.ready}}" bindtap="msgClean" src="../../images/clean.png" mode="aspectFit"
+        class="msgCleanImage">
+      </image>
       <picker wx:if="{{scope.ready}}" mode="multiSelector" bindchange="scopeSettingChangePick"
         range="{{scope.settingType}}">
         <view class="scopeSettingView">时间: {{scope.settingType[0][scope.settingIndex[0]]}}, 幅值:
@@ -32,9 +33,8 @@
   </view>
 </view>
 
-<page-container bindenter="invalid" bindafterleave="morePageSwitch" z-index="300" show="{{morePage.popup}}"
-  duration="300" position="bottom" close-on-slideDown="{{true}}"
-  overlay-style="background-color: rgba(255, 255, 255, 0.5);">
+<page-container bindenter="invalid" bindafterleave="morePageSwitch" show="{{morePage.popup}}" duration="300"
+  position="bottom" close-on-slideDown="{{true}}" overlay-style="background-color: rgba(255, 255, 255, 0.5);">
   <view class="morePage">
     <view class="moreModeOptBox">
       <text class="moreModeTipText">数据类型</text>
@@ -44,35 +44,31 @@
             class="moreModeViewFormat">文本
           </radio>
           <radio checked="{{(morePage.typeMode == 'frame') ? true : false}}" disabled="{{scope.ready}}" value="frame"
-            class="moreModeViewFormat">
-            数据帧
-          </radio>
+            class="moreModeViewFormat">数据帧</radio>
         </radio-group>
       </view>
     </view>
     <view class="moreModeOptBox">
       <text class="moreModeTipText">数据帧</text>
       <view class="moreModeGroupBox">
-        <view class="moreModeDataFormatOpt">
+        <view class="moreModeDataFrameOpt">
           <text class="moreModeViewFormat">帧头</text>
-          <input bindinput="morePageDataFormatHeadInput" disabled="{{!morePage.frameEnable}}"
-            value="{{morePage.frameHead}}" type="text" class="moreModeDataFormatInput"
-            style="text-align: center; color: red;"></input>
+          <input bindinput="morePageDataFrameHeadInput" disabled="{{!morePage.frameEnable}}"
+            value="{{morePage.frameHead}}" type="text" class="moreModeDataFrameInput" style="width: 25vw;"></input>
         </view>
-        <radio-group bindchange="morePageDataFormatAlignChange" class="moreModeDataFormatGroup">
+        <radio-group bindchange="morePageDataFrameAlignChange" class="moreModeDataFrameGroup">
           <radio checked="{{(morePage.frameAlign == 'big') ? true : false}}" disabled="{{!morePage.frameEnable}}"
-            value="big" class="moreModeViewFormat">大端
-          </radio>
+            value="big" class="moreModeViewFormat">大端</radio>
           <radio checked="{{(morePage.frameAlign == 'little') ? true : false}}" disabled="{{!morePage.frameEnable}}"
             value="little" class="moreModeViewFormat">小端</radio>
         </radio-group>
-      </view>
-    </view>
-    <view class="moreModeOptBox">
-      <text class="moreModeTipText">其他功能</text>
-      <view class="moreModeGroupBox">
-        <image bindtap="morePageCleanMsgLog" src="../../images/clean.png" mode="aspectFit" class="moreModeCleanImage">
-        </image>
+        <checkbox-group bindchange="morePageDataFrameSafeModeChange" class="moreModeDataFrameSafeCheck">
+          <checkbox value="safe" checked="{{(morePage.frameSafeEnable) ? true : false}}"
+            disabled="{{!morePage.frameEnable}}" class="moreModeViewFormat" style="width: 240rpx;">安全模式</checkbox>
+          <input bindinput="morePageDataFrameSafeModeModInput" value="{{morePage.frameSafeMod}}"
+            disabled="{{!morePage.frameEnable}}" type="number" class="morePageDataFrameSafeModInput"
+            style="width: 64rpx;"></input>
+        </checkbox-group>
       </view>
     </view>
   </view>

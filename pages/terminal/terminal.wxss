@@ -96,7 +96,6 @@
 .scopeSettingView {
   flex-grow: 1;
   max-height: 75rpx;
-  font-size: xx-small;
   text-align: center;
   font-weight: bold;
   white-space: nowrap;
@@ -104,14 +103,17 @@
   color: grey;
 }
 
-.msgSendButton {
+.msgCleanImage {
   margin: 0% 20rpx;
-  max-height: 75rpx;
+  padding: 10rpx;
+  max-height: 55rpx;
+  border: 1rpx solid darkgrey;
   border-radius: 2vw;
+  max-width: 55rpx;
 }
 
 .morePage {
-  height: 20vh;
+  height: 30vh;
   width: 100vw;
   display: flex;
   flex-direction: row;
@@ -140,7 +142,7 @@
   margin: 10rpx;
   align-items: center;
   justify-content: center;
-  height: 12vh;
+  height: 240rpx;
 }
 
 .moreModeDataTypeGroup {
@@ -152,22 +154,37 @@
   padding: 8rpx;
 }
 
-.moreModeDataFormatGroup {
+.moreModeDataFrameOpt {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.moreModeDataFrameInput,
+.morePageDataFrameSafeModInput {
+  margin: 8rpx;
+  border-bottom: 1rpx solid darkgrey;
+  text-align: center;
+  color: red;
+}
+
+.moreModeDataFrameGroup {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
 }
 
-.moreModeDataFormatOpt {
+.moreModeDataFrameSafeCheck {
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: center;
+  width: 360rpx;
 }
 
-.moreModeDataFormatInput {
-  width: 25vw;
-  margin: 8rpx;
+/* .morePageDataFrameSafeModInput {
+  width: 64rpx;
   border-bottom: 1rpx solid darkgrey;
 }
 
@@ -177,7 +194,12 @@
   padding: 8rpx;
 }
 
-/* .moreModeBluetoothImage {
+.aliyunSettingPage {
+  width: 80vw;
+  height: 80vh;
+}
+
+.moreModeBluetoothImage {
   align-self: center;
   width: 20vw;
 } */

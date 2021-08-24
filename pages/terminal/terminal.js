@@ -15,14 +15,15 @@ Page({
       deviceSecret: '9e445b1e2d240df50abe892c715c6c9b',
       device: {},
       topic: {
-        tx: 'a1uDuPpJgXx/WeChat/user/tx',
-        rx: 'a1uDuPpJgXx/WeChat/user/rx'
+        tx: '/a1uDuPpJgXx/WeChat/user/tx',
+        rx: '/a1uDuPpJgXx/WeChat/user/rx'
       },
       linkState: false // 微信小程序与阿里云IOT平台连接状态
     },
 
+    // 蓝牙模块设备信息[未添加该功能]
     bluetooth: {
-      linkState: false
+      linkState: false // 微信小程序鱼蓝模块连接状态
     },
     // 收发消息日志
     msg: {
@@ -33,9 +34,13 @@ Page({
           text: '设备已启动!' // 设备启动初始化消息
         }
       ],
+      bufferMax: 100, // 最大保存消息数量
       sendBuffer: '',
       receiveBuffer: '',
-      nowSeq: 'seq0'
+      nowSeq: 'seq0',
+      seqMsg: [],
+      frameSafeBuffer: [], // 数据帧安全模式缓存区
+      frameSafeSeqNow: 0
     },
 
     // 更多功能页面参数配置
@@ -45,7 +50,9 @@ Page({
       typeMode: 'text', // 文本模式[text]和数据帧模式[frame]选择
       frameEnable: false, // 是否开启数据帧参数设置
       frameHead: 'AABB', // 数据帧默认初始化帧头设置
-      frameAlign: 'big' // 数据帧默认对其方式设置[大端对齐]
+      frameAlign: 'big', // 数据帧默认对其方式设置[大端对齐]
+      frameSafeEnable: false, // 数据帧默认关闭安全模式
+      frameSafeMod: 8, // 数据帧安全模式的精度[谨慎调整]
     },
 
     // 波形图显示界面参数设置
@@ -54,17 +61,18 @@ Page({
       buttonEnable: false, // 是否开启显示波形图
       buttonType: 'warn', // 波形图开关按钮样式
       settingType: [ // 波形图显示picker组件参数设置
-        ['10帧/格', '20帧/格', '30帧/格', '40帧/格', '50帧/格', '60帧/格', '70帧/格'], // X轴一格显示的帧数
+        ['10帧/格', '20帧/格', '30帧/格', '40帧/格', '50帧/格', '60帧/格', '70帧/格', '80帧/格', '90帧/格', '100帧/格'], // X轴一格显示的帧数
         ['64/格', '128/格', '256/格', '512/格', '1024/格', '2048/格', '4096/格', '8192/格'] // Y轴一格显示的帧数
       ],
       settingData: [ // 对应picker组件的实际数据
-        [10, 20, 30, 40, 50, 60, 70], // 每个格子显示的指定帧数
+        [10, 20, 30, 40, 50, 60, 70, 80, 90, 100], // 每个格子显示的指定帧数
         [256, 512, 1024, 2048, 4096, 8192, 16384, 32768] // Y轴最大刻度
       ],
       settingIndex: [0, 0], // 波形图初始化默认设置数组下标
-      map: [], // 波形显示缓存区
+      map: [], // 波形图点显示位置缓存区
       frameBuffer: [], // 数据帧缓存区
       canvas: { // canvas画布参数设置
+        ready: false, // canvas画布是否初始化完成
         node: {}, // 公开canvas画布实例信息
         context: {}, // 公开canvas上下文信息
         padding: 10, // 波形图边界与显示区域的边距
@@ -146,7 +154,7 @@ Page({
   // ========================= msg 相关函数 =========================
 
   /**
-   * 更新消息
+   * 更新显示消息
    * @param {string} msgText 
    */
   msgUpdate(msgText) {
@@ -155,10 +163,25 @@ Page({
       seq: 'seq' + msg.log.length.toString(),
       time: util.formatTime(new Date()),
       text: msgText.toString()
-    }]);
+    }]).slice(-msg.bufferMax);
     msg.nowSeq = 'seq' + String(msg.log.length - 1);
     this.setData({ msg });
-    // console.log('消息记录已更新', msg.log);
+    console.log('消息记录已更新', msg.log);
+  },
+
+  /**
+   * 更多功能页面清除所有消息记录
+   */
+  msgClean() {
+    let msg = this.data.msg;
+    let scope = this.data.scope;
+    msg.log = [];
+    scope.frameBuffer = [];
+    if (scope.canvas.ready) {
+      this.scopeDrawWave();
+    }
+    this.setData({ msg, scope });
+    console.log('消息记录已清空', msg.log);
   },
 
   /**
@@ -168,7 +191,7 @@ Page({
   msgInput(text) {
     let msg = this.data.msg;
     msg.sendBuffer = text.detail.value;
-    console.log('sendBuffer:', msg.sendBuffer);
+    console.log('发送缓存区', msg.sendBuffer);
   },
 
   /**
@@ -184,7 +207,7 @@ Page({
   },
 
   /**
-   * 数据帧格式下, 接收并提取一帧或者多帧数据中的数值信息
+   * 数据帧格式下, 从接收缓存区提取一帧或者多帧数据中的数值信息
    */
   msgFrameProcess() {
     let msg = this.data.msg;
@@ -202,7 +225,7 @@ Page({
       if (old < last) {
         data[j++] = parseInt(msg.receiveBuffer.toString().substring(old + morePage.frameHead.length, last));
         if (isNaN(data[j - 1]))
-          data[j - 1] = 0;
+          j--;
       }
       tmp = msg.receiveBuffer.indexOf(morePage.frameHead, tmp + 1);
       old = last;
@@ -214,9 +237,37 @@ Page({
     }
     return {
       len: index.length,
-      seq: index,
       value: data
     };
+  },
+
+  /**
+   * 数据帧格式下, 从接收缓存区提取帧数据, 并通过消息序号对数据帧进行纠正排序, 返回纠错完成的数据帧信息
+   */
+  msgFrameSafeProcess() {
+    let msg = this.data.msg;
+    let morePage = this.data.morePage;
+    let data = [];
+    let tmpSeq = parseInt(msg.receiveBuffer.toString()) % morePage.frameSafeMod;
+    if (msg.frameSafeSeqNow == tmpSeq) {
+      if (msg.frameSafeBuffer[tmpSeq] == null) {
+        data = this.msgFrameProcess().value;
+        msg.frameSafeSeqNow++;
+        msg.frameSafeSeqNow %= morePage.frameSafeMod;
+        while (msg.frameSafeBuffer[msg.frameSafeSeqNow] != null) {
+          data.push.apply(data, msg.frameSafeBuffer[msg.frameSafeSeqNow]);
+          msg.frameSafeBuffer[msg.frameSafeSeqNow] = null;
+          msg.frameSafeSeqNow++;
+          msg.frameSafeSeqNow %= morePage.frameSafeMod;
+        }
+      }
+    }
+    else
+      msg.frameSafeBuffer[tmpSeq] = this.msgFrameProcess().value;
+    return {
+      len: data.length,
+      value: data
+    }
   },
 
   // ========================= aliyun 相关函数 =========================
@@ -237,7 +288,7 @@ Page({
       aliyun.linkState = true;
       this.setData({ aliyun });
       this.msgUpdate('阿里云物联网平台连接成功!');
-      console.log('Connect Successfully!');
+      console.log('阿里云物联网平台连接成功!');
     });
     device.subscribe(aliyun.topic.rx);
   },
@@ -251,7 +302,7 @@ Page({
     aliyun.linkState = false;
     this.setData({ aliyun });
     this.msgUpdate('阿里云物联网平台连接断开!');
-    console.log('Disconnected!');
+    console.log('阿里云物联网平台连接断开!');
   },
 
   /**
@@ -273,7 +324,8 @@ Page({
     let aliyun = this.data.aliyun;
     if (!aliyun.linkState) {
       this.aliyunConnect();
-      this.onReady();
+      this.aliyunLinkDetect();
+      this.aliyunReceiveMsg();
     }
     else
       this.aliyunDisconnect();
@@ -286,16 +338,23 @@ Page({
     let aliyun = this.data.aliyun;
     let msg = this.data.msg;
     let scope = this.data.scope;
+    let morePage = this.data.morePage;
     aliyun.device.on('message', (topic, payload) => {
-      msg.receiveBuffer = payload;
+      msg.receiveBuffer = payload.toString();
       this.msgUpdate(payload);
-      if (scope.ready) {
-        let tmp = this.msgFrameProcess();
+      console.log('接收缓存区', msg.receiveBuffer);
+      if (morePage.frameEnable) {
+        let tmp;
+        if (morePage.frameSafeEnable)
+          tmp = this.msgFrameSafeProcess();
+        else
+          tmp = this.msgFrameProcess();
         if (tmp.len > 0) {
           scope.frameBuffer.push.apply(scope.frameBuffer, tmp.value);
           scope.frameBuffer = scope.frameBuffer.slice(-scope.canvas.frameMax);
-          this.scopeDrawWave();
-          console.log(scope.frameBuffer);
+          console.log('数据帧缓存区', scope.frameBuffer);
+          if (scope.canvas.ready)
+            this.scopeDrawWave();
         }
       }
     });
@@ -315,6 +374,115 @@ Page({
     }
   },
 
+  /**
+   * 阿里云配置[此函数因微信小程序机制而未使用]
+   */
+  // aliyunSetting() {
+  //   let aliyun = this.data.aliyun;
+  //   let that = this;
+  //   wx.showModal({
+  //     title: '请输入阿里云产品证书(ProductKey)',
+  //     placeholderText: '注意大小写',
+  //     editable: true,
+  //     success(res) {
+  //       if (res.confirm) {
+  //         if (res.content == '')
+  //           res.content = 'a1uDuPpJgXx';
+  //         aliyun.productKey = res.content;
+  //         console.log('阿里云ProductKey', aliyun.productKey);
+  //         wx.showModal({
+  //           title: '请输入阿里云设备名称(DeviceName)',
+  //           placeholderText: '注意大小写',
+  //           editable: true,
+  //           success(res) {
+  //             if (res.confirm) {
+  //               if (res.content == '')
+  //                 res.content = 'WeChat';
+  //               aliyun.deviceName = res.content;
+  //               console.log('阿里云DeviceName', aliyun.deviceName);
+  //               wx.showModal({
+  //                 title: '请输入阿里云设备密钥(DeviceSecret)',
+  //                 placeholderText: '注意大小写',
+  //                 editable: true,
+  //                 success(res) {
+  //                   if (res.confirm) {
+  //                     if (res.content == '')
+  //                       res.content = '9e445b1e2d240df50abe892c715c6c9b';
+  //                     aliyun.deviceSecret = res.content;
+  //                     console.log('阿里云DeviceSecret', aliyun.deviceSecret);
+  //                     wx.showModal({
+  //                       title: '请输入阿里云设备订阅Topic(单个订阅)',
+  //                       placeholderText: '注意大小写',
+  //                       editable: true,
+  //                       success(res) {
+  //                         if (res.confirm) {
+  //                           if (res.content == '')
+  //                             res.content = 'a1uDuPpJgXx/WeChat/user/rx';
+  //                           aliyun.topic.rx = res.content;
+  //                           console.log('阿里云订阅Topic', aliyun.topic.rx);
+  //                           wx.showModal({
+  //                             title: '请输入阿里云设备发布Topic(单个发布)',
+  //                             placeholderText: '注意大小写',
+  //                             editable: true,
+  //                             success(res) {
+  //                               if (res.confirm) {
+  //                                 if (res.content == '')
+  //                                   res.content = 'a1uDuPpJgXx/WeChat/user/tx';
+  //                                 aliyun.topic.tx = res.content;
+  //                                 console.log('阿里云发布Topic', aliyun.topic.tx);
+  //                                 // 阿里云配置参数通过后的事件操作
+  //                                 if (!aliyun.linkState)
+  //                                   that.aliyunLinkSwitch(); // 启动阿里云连接
+  //                                 else {
+  //                                   that.aliyunLinkSwitch(); // 关闭阿里云连接
+  //                                   that.aliyunLinkSwitch(); // 启动阿里云连接
+  //                                 }
+  //                                 wx.showToast({
+  //                                   title: '阿里云配置成功',
+  //                                   icon: 'success'
+  //                                 });
+  //                               } else if (res.cancel) {
+  //                                 wx.showToast({
+  //                                   title: '阿里云配置失败',
+  //                                   icon: 'none'
+  //                                 })
+  //                               }
+  //                             }
+  //                           });
+  //                         } else if (res.cancel) {
+  //                           wx.showToast({
+  //                             title: '阿里云配置失败',
+  //                             icon: 'none'
+  //                           })
+  //                         }
+  //                       }
+  //                     });
+  //                   } else if (res.cancel) {
+  //                     wx.showToast({
+  //                       title: '阿里云配置失败',
+  //                       icon: 'none'
+  //                     })
+  //                   }
+  //                 }
+  //               });
+  //             } else if (res.cancel) {
+  //               wx.showToast({
+  //                 title: '阿里云配置失败',
+  //                 icon: 'none'
+  //               })
+  //             }
+  //           }
+  //         });
+  //       } else if (res.cancel) {
+  //         wx.showToast({
+  //           title: '阿里云配置失败',
+  //           icon: 'none'
+  //         })
+  //       }
+  //     }
+  //   });
+  // },
+
   // ========================= morePage 相关函数 =========================
 
   /**
@@ -323,59 +491,77 @@ Page({
   morePageSwitch() {
     let morePage = this.data.morePage;
     morePage.popup = !morePage.popup;
-    console.log('popup:', morePage.popup);
     this.setData({ morePage });
+    console.log('更多功能弹出', morePage.popup);
   },
 
   /**
    * 更多功能页面更改通信数据类型
-   * @param {*} opt 
+   * @param {*} opt 事件参数
    */
   morePageDataTypeChange(opt) {
     let morePage = this.data.morePage;
     let scope = this.data.scope;
     morePage.typeMode = opt.detail.value;
     morePage.frameEnable = (morePage.typeMode == 'frame') ? (scope.buttonEnable = true) : (scope.buttonEnable = false);
-    console.log('typeMode:', morePage.typeMode, 'frameEnable:', morePage.frameEnable);
     this.setData({ morePage, scope });
+    console.log('数据类型', morePage.typeMode, '数据帧功能', morePage.frameEnable);
   },
 
   /**
    * 更多功能页面更改数据类型
-   * @param {*} headText 
+   * @param {*} headText 事件参数
    */
-  morePageDataFormatHeadInput(headText) {
+  morePageDataFrameHeadInput(headText) {
     let morePage = this.data.morePage;
     morePage.frameHead = headText.detail.value;
-    console.log('frameHead:', morePage.frameHead);
     this.setData({ morePage });
+    console.log('数据帧头', morePage.frameHead);
   },
 
   /**
    * 更多功能页面更改数据帧对齐方式
-   * @param {*} opt 
+   * @param {*} opt 事件参数
    */
-  morePageDataFormatAlignChange(opt) {
+  morePageDataFrameAlignChange(opt) {
     let morePage = this.data.morePage;
     morePage.frameAlign = opt.detail.value;
-    console.log('frameAlign:', morePage.frameAlign);
     this.setData({ morePage });
+    console.log('数据帧对齐方式', morePage.frameAlign);
   },
 
   /**
-   * 更多功能页面清除所有消息记录
+   * 更多功能页面数据帧安全模式
+   * @param {*} opt 事件参数
    */
-  morePageCleanMsgLog() {
-    let msg = this.data.msg;
-    let scope = this.data.scope;
-    msg.log = [];
-    scope.frameBuffer = [];
-    if (scope.ready) {
-      let tmp = this.msgFrameProcess();
-      this.scopeDrawWave();
-    }
-    console.log('消息记录已清空', msg.log);
-    this.setData({ msg, scope });
+  morePageDataFrameSafeModeChange(opt) {
+    let morePage = this.data.morePage;
+    morePage.frameSafeEnable = (opt.detail.value == 'safe') ? true : false;
+    var that = this;
+    if (morePage.frameSafeEnable) {
+      wx.showModal({
+        title: '提示',
+        content: '接收格式: "[Seq][Message]" 安全模式用于对接收到的数据帧进行强制排序, 非必要情况下请勿选择!',
+        cancelText: '让我想想',
+        confirmText: '我知道了',
+        success(res) {
+          if (res.cancel)
+            morePage.frameSafeEnable = false;
+          else if (res.confirm)
+            morePage.frameSafeEnable = true;
+          that.setData({ morePage });
+          console.log('数据帧安全模式', morePage.frameSafeEnable);
+        }
+      })
+    } else
+      console.log('数据帧安全模式', morePage.frameSafeEnable);
+  },
+
+
+  morePageDataFrameSafeModeModInput(opt) {
+    let morePage = this.data.morePage;
+    morePage.frameSafeMod = Number(opt.detail.value);
+    this.setData({ morePage });
   },
 
   // ========================= scope 相关函数 =========================
@@ -392,6 +578,7 @@ Page({
     else {
       scope.buttonType = 'warn';
       scope.ready = false;
+      scope.canvas.ready = false;
     }
     this.setData({ scope });
     if (scope.ready) {
@@ -404,7 +591,7 @@ Page({
 
   /**
    * 波形图显示波形设置
-   * @param {*} setting 
+   * @param {*} setting 事件参数
    */
   scopeSettingChangePick(setting) {
     let scope = this.data.scope;
@@ -413,9 +600,9 @@ Page({
     scope.canvas.frameMax = scope.canvas.div.blockX * scope.settingData[0][scope.settingIndex[0]] + 1;
     scope.canvas.offset = (scope.canvas.axis[0][1] - scope.canvas.axis[0][0]) / (scope.canvas.div.blockX * scope.settingData[0][scope.settingIndex[0]]);
     this.setData({ scope });
-    console.log('settingIndex:', scope.settingIndex);
-    console.log('offset:', scope.canvas.offset);
-    console.log('frameMax:', scope.canvas.frameMax);
+    if (scope.canvas.ready)
+      this.scopeDrawWave();
+    console.log('波形图显示设置', scope.settingIndex, '波形图数据帧偏移量', scope.canvas.offset, '波形图最大显示帧数', scope.canvas.frameMax);
   },
 
   /**
@@ -431,6 +618,7 @@ Page({
       ctx = obj.getContext('2d');
       scope.canvas.node = obj;
       scope.canvas.context = ctx;
+      scope.canvas.ready = true;
       this.scopeDrawBaseMap();
       this.scopeSettingChangePick();
       this.scopeDrawWave();
@@ -543,12 +731,13 @@ Page({
           tmpAxisAmp = axisBase;
         }
         else
-          tmpAxisAmp = axisBase - scope.frameBuffer[tmpIndex - k] / scope.settingData[1][scope.settingIndex[1]] * (axisBase - axis[1][0]);
+          tmpAxisAmp = axisBase - scope.frameBuffer[tmpIndex - k + 1] / scope.settingData[1][scope.settingIndex[1]] * (axisBase - axis[1][0]);
         if (!tmpIndex) {
           if (scope.frameBuffer.length < scope.canvas.frameMax - 1)
             lastAxisAmp = axisBase;
           else
             lastAxisAmp = axisBase - scope.frameBuffer[0] / scope.settingData[1][scope.settingIndex[1]] * (axisBase - axis[1][0]);
+          console.log(scope.frameBuffer[0]);
         }
         this.scopeDrawSolidLine(lastOffset, lastAxisAmp, tmpOffset, tmpAxisAmp, 'red', 1);
         lastAxisAmp = tmpAxisAmp;
