@@ -64,7 +64,7 @@
         </radio-group>
         <checkbox-group bindchange="morePageDataFrameSafeModeChange" class="moreModeDataFrameSafeCheck">
           <checkbox value="safe" checked="{{(morePage.frameSafeEnable) ? true : false}}"
-            disabled="{{!morePage.frameEnable}}" class="moreModeViewFormat" style="width: 240rpx;">安全模式</checkbox>
+            disabled="{{!morePage.frameEnable}}" class="moreModeViewFormat" style="width: 220rpx;">安全模式</checkbox>
           <input bindinput="morePageDataFrameSafeModeModInput" value="{{morePage.frameSafeMod}}"
             disabled="{{!morePage.frameEnable}}" type="number" class="morePageDataFrameSafeModInput"
             style="width: 64rpx;"></input>

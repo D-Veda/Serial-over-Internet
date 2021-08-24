@@ -540,8 +540,8 @@ Page({
     var that = this;
     if (morePage.frameSafeEnable) {
       wx.showModal({
-        title: '提示',
-        content: '接收格式: "[Seq][Message]" 安全模式用于对接收到的数据帧进行强制排序, 非必要情况下请勿选择!',
+        title: '警告',
+        content: '接收格式: "[Seq][Message]" 安全模式用于对接收到的数据帧进行强制排序, 调整数值可改变纠错空间大小, 非必要请勿选择安全模式!',
         cancelText: '让我想想',
         confirmText: '我知道了',
         success(res) {
