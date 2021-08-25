@@ -20,7 +20,9 @@
     <view class="msgSendBar">
       <button bindtap="morePageSwitch" type="default" size="mini" class="moreButton">...</button>
       <input wx:if="{{!scope.ready}}" bindinput="msgInput" bindconfirm="msgSend" disabled="{{morePage.frameEnable}}"
-        value="{{msg.sendBuffer}}" cursor-spacing="28rpx" type="text" confirm-type="send" class="msgInputBox"></input>
+        value="{{msg.sendBuffer}}" cursor-spacing="28rpx"
+        placeholder="{{(morePage.frameEnable)? '当前是数据帧模式, 不能输入' : ''}}" type="text" confirm-type="send"
+        class="msgInputBox"></input>
       <image wx:if="{{!scope.ready}}" bindtap="msgClean" src="../../images/clean.png" mode="aspectFit"
         class="msgCleanImage">
       </image>
@@ -64,7 +66,7 @@
         </radio-group>
         <checkbox-group bindchange="morePageDataFrameSafeModeChange" class="moreModeDataFrameSafeCheck">
           <checkbox value="safe" checked="{{(morePage.frameSafeEnable) ? true : false}}"
-            disabled="{{!morePage.frameEnable}}" class="moreModeViewFormat" style="width: 220rpx;">安全模式</checkbox>
+            disabled="{{!morePage.frameEnable}}" class="moreModeViewFormat">安全模式</checkbox>
           <input bindinput="morePageDataFrameSafeModeModInput" value="{{morePage.frameSafeMod}}"
             disabled="{{!morePage.frameEnable}}" type="number" class="morePageDataFrameSafeModInput"
             style="width: 64rpx;"></input>

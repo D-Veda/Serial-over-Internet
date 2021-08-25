@@ -11,7 +11,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  height: 10vh;
+  height: 7vh;
   width: 100vw;
   color: dodgerblue;
 }
@@ -32,12 +32,13 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  height: 93vh;
 }
 
 .msgRecBox {
   display: flex;
   flex-direction: column;
-  height: 80vh;
+  height: 84vh;
   justify-items: flex-start;
 }
 
@@ -48,7 +49,7 @@
 .scopeInterface {
   display: flex;
   flex-direction: column;
-  height: 80vh;
+  height: 84vh;
   width: 100vw;
   justify-items: center;
   align-items: center;
@@ -57,7 +58,7 @@
 .scopeBox {
   background-color: black;
   color: white;
-  height: 78vh;
+  height: 82vh;
   width: 95vw;
   border: 1rpx solid darkgrey;
   border-radius: 5vw;
@@ -106,14 +107,14 @@
 .msgCleanImage {
   margin: 0% 20rpx;
   padding: 10rpx;
-  max-height: 55rpx;
+  max-height: 47rpx;
   border: 1rpx solid darkgrey;
   border-radius: 2vw;
-  max-width: 55rpx;
+  max-width: 47rpx;
 }
 
 .morePage {
-  height: 30vh;
+  height: 24vh;
   width: 100vw;
   display: flex;
   flex-direction: row;
@@ -142,7 +143,7 @@
   margin: 10rpx;
   align-items: center;
   justify-content: center;
-  height: 240rpx;
+  height: 220rpx;
 }
 
 .moreModeDataTypeGroup {
@@ -180,7 +181,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  width: 360rpx;
+  width: 320rpx;
 }
 
 /* .morePageDataFrameSafeModInput {
