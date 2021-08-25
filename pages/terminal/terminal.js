@@ -177,6 +177,7 @@ Page({
     let scope = this.data.scope;
     msg.log = [];
     scope.frameBuffer = [];
+    msg.frameSafeSeqNow = 0;
     if (scope.canvas.ready) {
       this.scopeDrawWave();
     }
@@ -254,12 +255,18 @@ Page({
         data = this.msgFrameProcess().value;
         msg.frameSafeSeqNow++;
         msg.frameSafeSeqNow %= morePage.frameSafeMod;
-        while (msg.frameSafeBuffer[msg.frameSafeSeqNow] != null) {
-          data.push.apply(data, msg.frameSafeBuffer[msg.frameSafeSeqNow]);
-          msg.frameSafeBuffer[msg.frameSafeSeqNow] = null;
-          msg.frameSafeSeqNow++;
-          msg.frameSafeSeqNow %= morePage.frameSafeMod;
-        }
+      }
+      else {
+        data = msg.frameSafeBuffer[tmpSeq];
+        msg.frameSafeBuffer[tmpSeq] = this.msgFrameProcess().value;
+        msg.frameSafeSeqNow++;
+        msg.frameSafeSeqNow %= morePage.frameSafeMod;
+      }
+      while (msg.frameSafeBuffer[msg.frameSafeSeqNow] != null) {
+        data.push.apply(data, msg.frameSafeBuffer[msg.frameSafeSeqNow]);
+        msg.frameSafeBuffer[msg.frameSafeSeqNow] = null;
+        msg.frameSafeSeqNow++;
+        msg.frameSafeSeqNow %= morePage.frameSafeMod;
       }
     }
     else
@@ -536,6 +543,7 @@ Page({
    */
   morePageDataFrameSafeModeChange(opt) {
     let morePage = this.data.morePage;
+    let msg = this.data.msg;
     morePage.frameSafeEnable = (opt.detail.value == 'safe') ? true : false;
     var that = this;
     if (morePage.frameSafeEnable) {
@@ -547,19 +555,24 @@ Page({
         success(res) {
           if (res.cancel)
             morePage.frameSafeEnable = false;
-          else if (res.confirm)
+          else if (res.confirm) {
             morePage.frameSafeEnable = true;
+            msg.frameSafeSeqNow = 0;
+          }
           that.setData({ morePage });
           console.log('数据帧安全模式', morePage.frameSafeEnable);
         }
       })
-    } else
+    }
+    else
       console.log('数据帧安全模式', morePage.frameSafeEnable);
   },
 
 
   morePageDataFrameSafeModeModInput(opt) {
     let morePage = this.data.morePage;
+    let msg = this.data.msg;
+    msg.frameSafeSeqNow = 0;
     morePage.frameSafeMod = Number(opt.detail.value);
     this.setData({ morePage });
   },
@@ -579,6 +592,7 @@ Page({
       scope.buttonType = 'warn';
       scope.ready = false;
       scope.canvas.ready = false;
+      scope.map = [];
     }
     this.setData({ scope });
     if (scope.ready) {
@@ -721,24 +735,24 @@ Page({
     let axisBase = (axis[1][1] + axis[1][0]) / 2;
     let tmpAxisAmp, lastAxisAmp;
     let tmpOffset, lastOffset;
-    let k = 0;
-    for (let i = 0, tmpIndex = 0; i < scope.canvas.div.blockX; i++) {
+    for (let i = 0, k = 1, tmpIndex = 1; i < scope.canvas.div.blockX; i++) {
       lastOffset = scope.map[i];
       for (let j = 0; j < scope.settingData[0][scope.settingIndex[0]]; j++, tmpIndex++) {
         tmpOffset = lastOffset + scope.canvas.offset;
-        if (tmpIndex + scope.frameBuffer.length < scope.canvas.frameMax - 1) {
+        if (tmpIndex == 1) {
+          if (scope.frameBuffer.length < scope.canvas.frameMax)
+            lastAxisAmp = axisBase;
+          else {
+            lastAxisAmp = axisBase - scope.frameBuffer[0] / scope.settingData[1][scope.settingIndex[1]] * (axisBase - axis[1][0]);
+            k = 0;
+          }
+        }
+        if (tmpIndex + scope.frameBuffer.length < scope.canvas.frameMax) {
           k++;
           tmpAxisAmp = axisBase;
         }
         else
-          tmpAxisAmp = axisBase - scope.frameBuffer[tmpIndex - k + 1] / scope.settingData[1][scope.settingIndex[1]] * (axisBase - axis[1][0]);
-        if (!tmpIndex) {
-          if (scope.frameBuffer.length < scope.canvas.frameMax - 1)
-            lastAxisAmp = axisBase;
-          else
-            lastAxisAmp = axisBase - scope.frameBuffer[0] / scope.settingData[1][scope.settingIndex[1]] * (axisBase - axis[1][0]);
-          console.log(scope.frameBuffer[0]);
-        }
+          tmpAxisAmp = axisBase - scope.frameBuffer[tmpIndex - k] / scope.settingData[1][scope.settingIndex[1]] * (axisBase - axis[1][0]);
         this.scopeDrawSolidLine(lastOffset, lastAxisAmp, tmpOffset, tmpAxisAmp, 'red', 1);
         lastAxisAmp = tmpAxisAmp;
         lastOffset = tmpOffset;
