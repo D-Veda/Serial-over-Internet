@@ -25,6 +25,7 @@ Page({
     bluetooth: {
       linkState: false // 微信小程序鱼蓝模块连接状态
     },
+
     // 收发消息日志
     msg: {
       log: [
@@ -40,7 +41,9 @@ Page({
       nowSeq: 'seq0',
       seqMsg: [],
       frameSafeBuffer: [], // 数据帧安全模式缓存区
-      frameSafeSeqNow: 0
+      frameSafeNextLabel: [], // 数据帧安全模式远程标签缓存区
+      frameSafeLabelNow: 0, // 默认初始值为0
+      frameSafeTTLNow: 0
     },
 
     // 更多功能页面参数配置
@@ -52,6 +55,7 @@ Page({
       frameHead: 'AABB', // 数据帧默认初始化帧头设置
       frameAlign: 'big', // 数据帧默认对其方式设置[大端对齐]
       frameSafeEnable: false, // 数据帧默认关闭安全模式
+      frameSafeTrigger: false, // 数据帧安全模式的起点触发器
       frameSafeMod: 8, // 数据帧安全模式的精度[谨慎调整]
     },
 
@@ -155,7 +159,7 @@ Page({
 
   /**
    * 更新显示消息
-   * @param {string} msgText 
+   * @param {string} msgText 消息更新内容
    */
   msgUpdate(msgText) {
     let msg = this.data.msg;
@@ -175,10 +179,12 @@ Page({
   msgClean() {
     let msg = this.data.msg;
     let scope = this.data.scope;
+    let morePage = this.data.morePage;
     msg.log = [];
     scope.frameBuffer = [];
-    msg.frameSafeSeqNow = 0;
     if (scope.canvas.ready) {
+      if (morePage.frameSafeEnable)
+        morePage.frameSafeTrigger = true;
       this.scopeDrawWave();
     }
     this.setData({ msg, scope });
@@ -187,7 +193,7 @@ Page({
 
   /**
    * 输入消息保存至缓存区
-   * @param {string} text 
+   * @param {string} text 消息文本
    */
   msgInput(text) {
     let msg = this.data.msg;
@@ -216,23 +222,23 @@ Page({
     let index = [];
     let data = [];
     let i = 0, j = 0;
-    let old = 0, last = 0;
+    let last = 0, now = 0;
     if (this.data.morePage.frameAlign == 'little')
       msg.receiveBuffer = msg.receiveBuffer.toString().split('').reverse().join('');
     let tmp = msg.receiveBuffer.indexOf(morePage.frameHead);
     while (tmp != -1) {
       index[i++] = tmp;
-      last = tmp;
-      if (old < last) {
-        data[j++] = parseInt(msg.receiveBuffer.toString().substring(old + morePage.frameHead.length, last));
+      now = tmp;
+      if (last < now) {
+        data[j++] = parseInt(msg.receiveBuffer.toString().substring(last + morePage.frameHead.length, now));
         if (isNaN(data[j - 1]))
           j--;
       }
       tmp = msg.receiveBuffer.indexOf(morePage.frameHead, tmp + 1);
-      old = last;
+      last = now;
     };
-    if ((old == last && last) || !last) {
-      data[j] = parseInt(msg.receiveBuffer.toString().substring(last + morePage.frameHead.length));
+    if ((last == now && now) || !now) {
+      data[j] = parseInt(msg.receiveBuffer.toString().substring(now + morePage.frameHead.length));
       if (isNaN(data[j]) && tmp == -1)
         data[j] = 0;
     }
@@ -249,28 +255,43 @@ Page({
     let msg = this.data.msg;
     let morePage = this.data.morePage;
     let data = [];
-    let tmpSeq = parseInt(msg.receiveBuffer.toString()) % morePage.frameSafeMod;
-    if (msg.frameSafeSeqNow == tmpSeq) {
-      if (msg.frameSafeBuffer[tmpSeq] == null) {
-        data = this.msgFrameProcess().value;
-        msg.frameSafeSeqNow++;
-        msg.frameSafeSeqNow %= morePage.frameSafeMod;
+    let tmpLocal = parseInt(msg.receiveBuffer.toString());
+    let tmpRemote = msg.receiveBuffer.toString().indexOf("#");
+    let tmpIndex = 0;
+    if (tmpRemote != -1)
+      tmpRemote = parseInt(msg.receiveBuffer.toString().substring(tmpRemote + 1));
+    if (morePage.frameSafeTrigger) {
+      morePage.frameSafeTrigger = false;
+      msg.frameSafeLabelNow = tmpLocal;
+    }
+    msg.frameSafeBuffer[tmpLocal] = this.msgFrameProcess().value;
+    msg.frameSafeNextLabel[tmpLocal] = tmpRemote;
+    while (msg.frameSafeBuffer[msg.frameSafeLabelNow] != null && msg.frameSafeLabelNow != -1) {
+      tmpIndex++;
+      data.push.apply(data, msg.frameSafeBuffer[msg.frameSafeLabelNow]);
+      msg.frameSafeLabelNow = msg.frameSafeNextLabel[msg.frameSafeLabelNow];
+      if (msg.frameSafeLabelNow == -1) {
+        morePage.frameSafeTrigger = true;
+        break;
       }
-      else {
-        data = msg.frameSafeBuffer[tmpSeq];
-        msg.frameSafeBuffer[tmpSeq] = this.msgFrameProcess().value;
-        msg.frameSafeSeqNow++;
-        msg.frameSafeSeqNow %= morePage.frameSafeMod;
+      msg.frameSafeBuffer[msg.frameSafeLabelNow] = null;
+    }
+    if (!tmpIndex) {
+      if (++msg.frameSafeTTLNow == morePage.frameSafeMod) {
+        let tmp = msg.frameSafeNextLabel.find((value, index) => {
+          return (index > msg.frameSafeLabelNow) ? !isNaN(value) : false;
+        });
+        if (tmp == undefined)
+          msg.frameSafeLabelNow = msg.frameSafeNextLabel.find((value) => {
+            return !isNaN(value);
+          })
+        else
+          msg.frameSafeLabelNow = tmp;
       }
-      while (msg.frameSafeBuffer[msg.frameSafeSeqNow] != null) {
-        data.push.apply(data, msg.frameSafeBuffer[msg.frameSafeSeqNow]);
-        msg.frameSafeBuffer[msg.frameSafeSeqNow] = null;
-        msg.frameSafeSeqNow++;
-        msg.frameSafeSeqNow %= morePage.frameSafeMod;
-      }
+      data = 0;
     }
     else
-      msg.frameSafeBuffer[tmpSeq] = this.msgFrameProcess().value;
+      msg.frameSafeTTLNow = 0;
     return {
       len: data.length,
       value: data
@@ -284,6 +305,7 @@ Page({
    */
   aliyunConnect() {
     let aliyun = this.data.aliyun;
+    let morePage = this.data.morePage;
     const device = iot.device({
       productKey: this.data.aliyun.productKey,
       deviceName: this.data.aliyun.deviceName,
@@ -298,6 +320,8 @@ Page({
       console.log('阿里云物联网平台连接成功!');
     });
     device.subscribe(aliyun.topic.rx);
+    if (morePage.frameSafeEnable)
+      morePage.frameSafeTrigger = true;
   },
 
   /**
@@ -381,115 +405,6 @@ Page({
     }
   },
 
-  /**
-   * 阿里云配置[此函数因微信小程序机制而未使用]
-   */
-  // aliyunSetting() {
-  //   let aliyun = this.data.aliyun;
-  //   let that = this;
-  //   wx.showModal({
-  //     title: '请输入阿里云产品证书(ProductKey)',
-  //     placeholderText: '注意大小写',
-  //     editable: true,
-  //     success(res) {
-  //       if (res.confirm) {
-  //         if (res.content == '')
-  //           res.content = 'a1uDuPpJgXx';
-  //         aliyun.productKey = res.content;
-  //         console.log('阿里云ProductKey', aliyun.productKey);
-  //         wx.showModal({
-  //           title: '请输入阿里云设备名称(DeviceName)',
-  //           placeholderText: '注意大小写',
-  //           editable: true,
-  //           success(res) {
-  //             if (res.confirm) {
-  //               if (res.content == '')
-  //                 res.content = 'WeChat';
-  //               aliyun.deviceName = res.content;
-  //               console.log('阿里云DeviceName', aliyun.deviceName);
-  //               wx.showModal({
-  //                 title: '请输入阿里云设备密钥(DeviceSecret)',
-  //                 placeholderText: '注意大小写',
-  //                 editable: true,
-  //                 success(res) {
-  //                   if (res.confirm) {
-  //                     if (res.content == '')
-  //                       res.content = '9e445b1e2d240df50abe892c715c6c9b';
-  //                     aliyun.deviceSecret = res.content;
-  //                     console.log('阿里云DeviceSecret', aliyun.deviceSecret);
-  //                     wx.showModal({
-  //                       title: '请输入阿里云设备订阅Topic(单个订阅)',
-  //                       placeholderText: '注意大小写',
-  //                       editable: true,
-  //                       success(res) {
-  //                         if (res.confirm) {
-  //                           if (res.content == '')
-  //                             res.content = 'a1uDuPpJgXx/WeChat/user/rx';
-  //                           aliyun.topic.rx = res.content;
-  //                           console.log('阿里云订阅Topic', aliyun.topic.rx);
-  //                           wx.showModal({
-  //                             title: '请输入阿里云设备发布Topic(单个发布)',
-  //                             placeholderText: '注意大小写',
-  //                             editable: true,
-  //                             success(res) {
-  //                               if (res.confirm) {
-  //                                 if (res.content == '')
-  //                                   res.content = 'a1uDuPpJgXx/WeChat/user/tx';
-  //                                 aliyun.topic.tx = res.content;
-  //                                 console.log('阿里云发布Topic', aliyun.topic.tx);
-  //                                 // 阿里云配置参数通过后的事件操作
-  //                                 if (!aliyun.linkState)
-  //                                   that.aliyunLinkSwitch(); // 启动阿里云连接
-  //                                 else {
-  //                                   that.aliyunLinkSwitch(); // 关闭阿里云连接
-  //                                   that.aliyunLinkSwitch(); // 启动阿里云连接
-  //                                 }
-  //                                 wx.showToast({
-  //                                   title: '阿里云配置成功',
-  //                                   icon: 'success'
-  //                                 });
-  //                               } else if (res.cancel) {
-  //                                 wx.showToast({
-  //                                   title: '阿里云配置失败',
-  //                                   icon: 'none'
-  //                                 })
-  //                               }
-  //                             }
-  //                           });
-  //                         } else if (res.cancel) {
-  //                           wx.showToast({
-  //                             title: '阿里云配置失败',
-  //                             icon: 'none'
-  //                           })
-  //                         }
-  //                       }
-  //                     });
-  //                   } else if (res.cancel) {
-  //                     wx.showToast({
-  //                       title: '阿里云配置失败',
-  //                       icon: 'none'
-  //                     })
-  //                   }
-  //                 }
-  //               });
-  //             } else if (res.cancel) {
-  //               wx.showToast({
-  //                 title: '阿里云配置失败',
-  //                 icon: 'none'
-  //               })
-  //             }
-  //           }
-  //         });
-  //       } else if (res.cancel) {
-  //         wx.showToast({
-  //           title: '阿里云配置失败',
-  //           icon: 'none'
-  //         })
-  //       }
-  //     }
-  //   });
-  // },
-
   // ========================= morePage 相关函数 =========================
 
   /**
@@ -538,7 +453,7 @@ Page({
   },
 
   /**
-   * 更多功能页面数据帧安全模式
+   * 更多功能页面数据帧安全模式开启提示
    * @param {*} opt 事件参数
    */
   morePageDataFrameSafeModeChange(opt) {
@@ -549,15 +464,17 @@ Page({
     if (morePage.frameSafeEnable) {
       wx.showModal({
         title: '警告',
-        content: '接收格式: "[Seq][Message]" 安全模式用于对接收到的数据帧进行强制排序, 调整数值可改变纠错空间大小, 非必要请勿选择安全模式!',
+        content: '接收格式: "[Seq][Message](#[NextSeq])" 安全模式用于对接收到的数据帧进行强制排序, 调整数值可改变纠错空间大小, 非必要请勿选择安全模式!',
         cancelText: '让我想想',
         confirmText: '我知道了',
         success(res) {
-          if (res.cancel)
+          if (res.cancel) {
             morePage.frameSafeEnable = false;
+            morePage.frameSafeTrigger = false;
+          }
           else if (res.confirm) {
             morePage.frameSafeEnable = true;
-            msg.frameSafeSeqNow = 0;
+            morePage.frameSafeTrigger = true;
           }
           that.setData({ morePage });
           console.log('数据帧安全模式', morePage.frameSafeEnable);
@@ -568,11 +485,14 @@ Page({
       console.log('数据帧安全模式', morePage.frameSafeEnable);
   },
 
-
+  /**
+   * 更多功能页面数据帧安全模式参数调整
+   * @param {*} opt 事件参数
+   */
   morePageDataFrameSafeModeModInput(opt) {
     let morePage = this.data.morePage;
     let msg = this.data.msg;
-    msg.frameSafeSeqNow = 0;
+    msg.frameSafeNumNow = 0;
     morePage.frameSafeMod = Number(opt.detail.value);
     this.setData({ morePage });
   },
@@ -726,7 +646,7 @@ Page({
   },
 
   /**
-   * 波形图绘制数据帧波形
+   * 从数据帧缓存区更新绘制波形
    */
   scopeDrawWave() {
     this.scopeDrawBaseMap();
