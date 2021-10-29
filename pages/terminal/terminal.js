@@ -182,11 +182,10 @@ Page({
     let morePage = this.data.morePage;
     msg.log = [];
     scope.frameBuffer = [];
-    if (scope.canvas.ready) {
-      if (morePage.frameSafeEnable)
-        morePage.frameSafeTrigger = true;
+    if (scope.canvas.ready)
       this.scopeDrawWave();
-    }
+    if (morePage.frameSafeEnable)
+      morePage.frameSafeTrigger = true;
     this.setData({ msg, scope });
     console.log('消息记录已清空', msg.log);
   },
@@ -263,35 +262,37 @@ Page({
     if (morePage.frameSafeTrigger) {
       morePage.frameSafeTrigger = false;
       msg.frameSafeLabelNow = tmpLocal;
+      msg.frameSafeTTLNow = morePage.frameSafeMod;
+    }
+    if (!msg.frameSafeTTLNow) {
+      data.push.apply(data, [0]);
+      msg.frameSafeLabelNow = msg.frameSafeNextLabel.findIndex((value, index) => {
+        return (index > msg.frameSafeLabelNow) ? !isNaN(value) : false;
+      });
+      if (msg.frameSafeLabelNow == undefined)
+        msg.frameSafeLabelNow = msg.frameSafeNextLabel.findIndex((value) => {
+          return !isNaN(value);
+        })
+      if (msg.frameSafeLabelNow == undefined)
+        msg.frameSafeLabelNow = tmpLocal;
+      msg.frameSafeTTLNow = morePage.frameSafeMod;
     }
     msg.frameSafeBuffer[tmpLocal] = this.msgFrameProcess().value;
     msg.frameSafeNextLabel[tmpLocal] = tmpRemote;
-    while (msg.frameSafeBuffer[msg.frameSafeLabelNow] != null && msg.frameSafeLabelNow != -1) {
+    while (msg.frameSafeBuffer[msg.frameSafeLabelNow] != null) {
       tmpIndex++;
       data.push.apply(data, msg.frameSafeBuffer[msg.frameSafeLabelNow]);
+      msg.frameSafeBuffer[msg.frameSafeLabelNow] = null;
       msg.frameSafeLabelNow = msg.frameSafeNextLabel[msg.frameSafeLabelNow];
       if (msg.frameSafeLabelNow == -1) {
         morePage.frameSafeTrigger = true;
         break;
       }
-      msg.frameSafeBuffer[msg.frameSafeLabelNow] = null;
     }
-    if (!tmpIndex) {
-      if (++msg.frameSafeTTLNow == morePage.frameSafeMod) {
-        let tmp = msg.frameSafeNextLabel.find((value, index) => {
-          return (index > msg.frameSafeLabelNow) ? !isNaN(value) : false;
-        });
-        if (tmp == undefined)
-          msg.frameSafeLabelNow = msg.frameSafeNextLabel.find((value) => {
-            return !isNaN(value);
-          })
-        else
-          msg.frameSafeLabelNow = tmp;
-      }
-      data = 0;
-    }
+    if (!tmpIndex)
+      msg.frameSafeTTLNow--;
     else
-      msg.frameSafeTTLNow = 0;
+      msg.frameSafeTTLNow = morePage.frameSafeMod;
     return {
       len: data.length,
       value: data
@@ -319,7 +320,7 @@ Page({
       this.msgUpdate('阿里云物联网平台连接成功!');
       console.log('阿里云物联网平台连接成功!');
     });
-    device.subscribe(aliyun.topic.rx);
+    device.subscribe(aliyun.topic.rx, { qos: 1 });
     if (morePage.frameSafeEnable)
       morePage.frameSafeTrigger = true;
   },
