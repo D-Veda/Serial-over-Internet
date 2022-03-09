@@ -21,12 +21,15 @@ Page({
       linkState: false // 微信小程序与阿里云IOT平台连接状态
     },
 
-    // 蓝牙模块设备信息[未添加该功能]
+    // 蓝牙设备信息
     bluetooth: {
-      linkState: false // 微信小程序鱼蓝模块连接状态
+      discoveryState: false, // 蓝牙搜索状态
+      linkState: false, // 蓝牙连接状态
+      adapterEnable: false, // 蓝牙适配器是否可用
+      listEnable: false
     },
 
-    // 收发消息日志
+    // 收发消息参数
     msg: {
       log: [
         {
@@ -95,8 +98,10 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad: function () {
+    this.popup = this.selectComponent("#popup");
     console.log('正在加载', '开始连接');
     this.aliyunConnect();
+    this.bluetoothOpen();
   },
 
   /**
@@ -106,6 +111,8 @@ Page({
     console.log('渲染完成', '开始侦听');
     this.aliyunLinkDetect();
     this.aliyunReceiveMsg();
+    this.bluetoothDetect();
+    this.bluetoothDiscovery();
   },
 
   /**
@@ -127,6 +134,7 @@ Page({
    */
   onUnload: function () {
     this.aliyunDisconnect();
+    this.bluetoothClose();
   },
 
   /**
@@ -404,6 +412,131 @@ Page({
       msg.sendBuffer = '';
       this.setData({ msg });
     }
+  },
+
+  // ========================= bluetooth 相关函数 =========================
+
+  bluetoothListSwitch() {
+    let bluetooth = this.data.bluetooth;
+    bluetooth.listEnable = !bluetooth.listEnable;
+    console.log(bluetooth.listEnable)
+    this.setData({ bluetooth });
+  },
+
+  bluetoothDiscovery() {
+    wx.onBluetoothDeviceFound((result) => {
+      result.devices.forEach((device) => {
+        console.log(device);
+        this.msgUpdate(device.localName.toString() + ' ' + device.RSSI.toString() + '\n' + device.deviceId.toString());
+      });
+    });
+    // function ab2hex(buffer) {
+    //   var hexArr = Array.prototype.map.call(
+    //     new Uint8Array(buffer),
+    //     function(bit) {
+    //       return ('00' + bit.toString(16)).slice(-2)
+    //     }
+    //   )
+    //   return hexArr.join('');
+    // }
+    // wx.getBluetoothDevices({
+    //   success: function (res) {
+    //     console.log(res)
+    //     if (res.devices[0]) {
+    //       console.log(ab2hex(res.devices[0].advertisData))
+    //     }
+    //   }
+    // })
+    // wx.getBluetoothDevices({
+    //   success: (result) => {
+    //     result.devices.forEach((device) => {
+    //       console.log(device);
+    //     })
+    //   },
+    //   complete: (result) => {
+    //     result.devices.forEach((device) => {
+    //       console.log(device);
+    //     })
+    //   }
+    // })
+  },
+
+  bluetoothLinkSwitch() {
+    let bluetooth = this.data.bluetooth;
+    if (bluetooth.adapterEnable) {
+      if (!bluetooth.discoveryState) {
+        bluetooth.discoveryState = true;
+        wx.startBluetoothDevicesDiscovery({
+          powerLevel: 'high',
+          fail: () => {
+            this.msgUpdate('蓝牙设备搜索失败!');
+            console.log('蓝牙设备搜索失败!');
+          }
+        });
+      }
+      else {
+        bluetooth.discoveryState = false;
+        wx.stopBluetoothDevicesDiscovery();
+        wx.offBluetoothDeviceFound();
+      }
+    }
+  },
+
+  bluetoothDetect() {
+    let bluetooth = this.data.bluetooth;
+    wx.onBluetoothAdapterStateChange((result) => {
+      if (result.available && !bluetooth.adapterEnable) {
+        bluetooth.adapterEnable = true;
+        this.msgUpdate('蓝牙启动成功!');
+        console.log('蓝牙启动成功!');
+        this.setData({ bluetooth });
+      }
+      else if (!result.available && bluetooth.adapterEnable) {
+        bluetooth.adapterEnable = false;
+        this.msgUpdate('蓝牙已关闭!');
+        console.log('蓝牙已关闭!');
+        this.setData({ bluetooth });
+      }
+      else if (result.discovering && bluetooth.discoveryState) {
+        bluetooth.discoveryState = true;
+        this.msgUpdate('蓝牙搜索启动!');
+        console.log('蓝牙搜索启动!');
+        this.setData({ bluetooth });
+      } else if (!result.discovering && !bluetooth.discoveryState) {
+        bluetooth.discoveryState = false;
+        this.msgUpdate('蓝牙搜索停止!');
+        console.log('蓝牙搜索停止!');
+        this.setData({ bluetooth });
+      }
+    });
+  },
+
+  bluetoothOpen() {
+    let bluetooth = this.data.bluetooth;
+    wx.openBluetoothAdapter({
+      mode: 'central',
+      success: (res) => {
+        bluetooth.adapterEnable = true;
+        this.msgUpdate('蓝牙初始化成功!');
+        console.log('蓝牙初始化成功!');
+        this.setData({ bluetooth });
+      },
+      fail: (res) => {
+        bluetooth.adapterEnable = false;
+        this.msgUpdate('蓝牙不可用!');
+        console.log('蓝牙不可用!');
+        this.setData({ bluetooth });
+      }
+    });
+  },
+
+  bluetoothClose() {
+    let bluetooth = this.data.bluetooth;
+    bluetooth.adapterEnable = false;
+    bluetooth.discoveryState = false;
+    bluetooth.linkState = false;
+    wx.closeBluetoothAdapter();
+    this.setData({ bluetooth });
   },
 
   // ========================= morePage 相关函数 =========================

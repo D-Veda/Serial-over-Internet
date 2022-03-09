@@ -1,0 +1,6 @@
+<!--lib/popup/popup.wxml-->
+<view class="background" hidden="{{!show}}" bindtap="backEvent">
+  <view class="component" catchtap="invalid">
+    <slot></slot>
+  </view>
+</view>

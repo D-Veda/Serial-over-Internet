@@ -4,8 +4,8 @@
     "ignore": []
   },
   "setting": {
-    "urlCheck": true,
-    "es6": true,
+    "urlCheck": false,
+    "es6": false,
     "enhance": true,
     "postcss": true,
     "preloadBackgroundData": false,
@@ -30,15 +30,16 @@
       "disablePlugins": [],
       "outputPath": ""
     },
-    "enableEngineNative": false,
-    "useIsolateContext": true,
+    "useIsolateContext": false,
     "userConfirmedBundleSwitch": false,
     "packNpmManually": false,
     "packNpmRelationList": [],
     "minifyWXSS": true,
     "disableUseStrict": false,
+    "minifyWXML": true,
     "showES6CompileOption": false,
-    "useCompilerPlugins": false
+    "useCompilerPlugins": false,
+    "ignoreUploadUnusedFiles": true
   },
   "compileType": "miniprogram",
   "libVersion": "2.19.2",

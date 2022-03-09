@@ -3,7 +3,9 @@
   <view class="navigationBar">
     <view bindtap="aliyunLinkSwitch" class="navigationOpt" style="color: {{(aliyun.linkState) ? 'green' : 'red'}};">阿里云
     </view>
-    <view class="navigationOpt" style="color: {{(bluetooth.linkState) ? 'green' : 'dodgerblue'}};">蓝牙
+    <view bindtap="bluetoothLinkSwitch" class="navigationOpt"
+      style="color: {{(bluetooth.linkState) ? 'green' : (bluetooth.adapterEnable) ? 'dodgerblue' : 'red'}};">
+      蓝牙{{(bluetooth.discoveryState) ? '搜索中' : ''}}
     </view>
     <view class="navigationOpt">
       <button bindtap="scopeSwitch" disabled="{{!scope.buttonEnable}}" size="mini" type="{{scope.buttonType}}"
@@ -19,6 +21,12 @@
     <view wx:else class="scopeInterface">
       <canvas type="2d" id="scope" class="scopeBox"></canvas>
     </view>
+    <popup show="{{bluetooth.listEnable}}" bind:back="bluetoothListSwitch">
+      <text>aaaaaa</text>
+      <view>abasdfasdf asdf </view>
+      <view>abasdfasdf asdf </view>
+      <view>abasdfasdf asdf </view>
+    </popup>
     <view class="msgSendBar">
       <button bindtap="morePageSwitch" type="default" size="mini" class="moreButton">...</button>
       <input wx:if="{{!scope.ready}}" bindinput="msgInput" bindconfirm="msgSend" disabled="{{morePage.frameEnable}}"

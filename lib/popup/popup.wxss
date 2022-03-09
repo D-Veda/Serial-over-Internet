@@ -1,0 +1,27 @@
+/* lib/popup/popup.wxss */
+
+.background {
+  position: absolute;
+  top: 0vh;
+  left: 0vw;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.component {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: scroll;
+  background-color: snow;
+  max-width: 80vw;
+  max-height: 80vh;
+  border: 2rpx solid snow;
+  border-radius: 2vw;
+  padding: 8rpx;
+}
